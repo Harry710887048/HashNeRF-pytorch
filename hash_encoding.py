@@ -7,6 +7,16 @@ import pdb
 
 from utils import get_voxel_vertices
 
+'''
+#哈希编码
+#几个参数分别为：
+bounding box 边界
+n_level 多分辨率层数
+n_feature_per_level 哈希表上每个位置的特征维数，推荐为2
+log2_hashmap_size 每层分辨率的哈希表大小 即2^19
+base_resolution 最低分辨率
+finest_resolition 最大分辨率
+'''
 class HashEmbedder(nn.Module):
     def __init__(self, bounding_box, n_levels=16, n_features_per_level=2,\
                 log2_hashmap_size=19, base_resolution=16, finest_resolution=512):
@@ -19,27 +29,33 @@ class HashEmbedder(nn.Module):
         self.finest_resolution = torch.tensor(finest_resolution)
         self.out_dim = self.n_levels * self.n_features_per_level
 
+        #b 成长因子 即等比级数的公比
         self.b = torch.exp((torch.log(self.finest_resolution)-torch.log(self.base_resolution))/(n_levels-1))
 
+        #为每个分辨率层级做embedding，创建哈希表
         self.embeddings = nn.ModuleList([nn.Embedding(2**self.log2_hashmap_size, \
                                         self.n_features_per_level) for i in range(n_levels)])
         # custom uniform initialization
+        #随机权重初始化
         for i in range(n_levels):
             nn.init.uniform_(self.embeddings[i].weight, a=-0.0001, b=0.0001)
             # self.embeddings[i].weight.data.zero_()
         
 
+    #三线性插值，每次用一个点临近的八个点做特征参数的更新
     def trilinear_interp(self, x, voxel_min_vertex, voxel_max_vertex, voxel_embedds):
         '''
-        x: B x 3
+        x: B x 3    (batch_size,3(x,y,z))
         voxel_min_vertex: B x 3
         voxel_max_vertex: B x 3
-        voxel_embedds: B x 8 x 2
+        voxel_embedds: B x 8 x 2 #对八个相邻点的编码，特征维数为2
         '''
         # source: https://en.wikipedia.org/wiki/Trilinear_interpolation
-        weights = (x - voxel_min_vertex)/(voxel_max_vertex-voxel_min_vertex) # B x 3
 
+        #相当于归一化
+        weights = (x - voxel_min_vertex)/(voxel_max_vertex-voxel_min_vertex) # B x 3
         # step 1
+        #按照三线性插值公式更新即可
         # 0->000, 1->001, 2->010, 3->011, 4->100, 5->101, 6->110, 7->111
         c00 = voxel_embedds[:,0]*(1-weights[:,0][:,None]) + voxel_embedds[:,4]*weights[:,0][:,None]
         c01 = voxel_embedds[:,1]*(1-weights[:,0][:,None]) + voxel_embedds[:,5]*weights[:,0][:,None]
@@ -55,9 +71,11 @@ class HashEmbedder(nn.Module):
 
         return c
 
+    #前向传播
     def forward(self, x):
         # x is 3D point position: B x 3
         x_embedded_all = []
+        #对每个分辨率层级进行网格的编码
         for i in range(self.n_levels):
             resolution = torch.floor(self.base_resolution * self.b**i)
             voxel_min_vertex, voxel_max_vertex, hashed_voxel_indices = get_voxel_vertices(\
@@ -71,7 +89,7 @@ class HashEmbedder(nn.Module):
 
         return torch.cat(x_embedded_all, dim=-1)
 
-
+#args.i_embed==2 选择SHEncoder编码,Spherical Harmonic Encoder编码，即球面调和函数编码，NeRF好像没有用到
 class SHEncoder(nn.Module):
     def __init__(self, input_dim=3, degree=4):
     
