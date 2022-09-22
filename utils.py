@@ -12,18 +12,19 @@ BOX_OFFSETS = torch.tensor([[[i,j,k] for i in [0, 1] for j in [0, 1] for k in [0
 
 def hash(coords, log2_hashmap_size):
     '''
-    coords: this function can process upto 7 dim coordinates
-    log2T:  logarithm of T w.r.t 2
+    coords: this function can process upto 7 dim coordinates #对7维坐标进行处理
+    log2T:  logarithm of T w.r.t 2 #以2为底的对数
     '''
+    #极大素数
     primes = [1, 2654435761, 805459861, 3674653429, 2097192037, 1434869437, 2165219737]
 
-    xor_result = torch.zeros_like(coords)[..., 0]
+    xor_result = torch.zeros_like(coords)[..., 0] #异或 进行地址的哈希编码
     for i in range(coords.shape[-1]):
         xor_result ^= coords[..., i]*primes[i]
 
     return torch.tensor((1<<log2_hashmap_size)-1).to(xor_result.device) & xor_result
 
-
+#获取渲染物体的边界
 def get_bbox3d_for_blenderobj(camera_transforms, H, W, near=2.0, far=6.0):
     camera_angle_x = float(camera_transforms['camera_angle_x'])
     focal = 0.5*W/np.tan(0.5 * camera_angle_x)
@@ -91,7 +92,7 @@ def get_bbox3d_for_llff(poses, hwf, near=0.0, far=1.0):
 
     return (torch.tensor(min_bound)-torch.tensor([0.1,0.1,0.0001]), torch.tensor(max_bound)+torch.tensor([0.1,0.1,0.0001]))
 
-
+#获取体素顶点
 def get_voxel_vertices(xyz, bounding_box, resolution, log2_hashmap_size):
     '''
     xyz: 3D coordinates of samples. B x 3
@@ -123,8 +124,6 @@ def get_voxel_vertices(xyz, bounding_box, resolution, log2_hashmap_size):
     hashed_voxel_indices = hash(voxel_indices, log2_hashmap_size)
 
     return voxel_min_vertex, voxel_max_vertex, hashed_voxel_indices
-
-
 
 if __name__=="__main__":
     with open("data/nerf_synthetic/chair/transforms_train.json", "r") as f:

@@ -14,8 +14,10 @@ def get_ray_directions(H, W, focal):
     Outputs:
         directions: (H, W, 3), the direction of the rays in camera coordinate
     """
-    grid = create_meshgrid(H, W, normalized_coordinates=False)[0]
+    grid = create_meshgrid(H, W, normalized_coordinates=False)[0] #创建mesh网格
     i, j = grid.unbind(-1)
+    # torch.unbind()移除指定维后，返回一个元组，包含了沿着指定维切片后的各个切片。
+
     # the direction here is without +0.5 pixel centering as calibration is not so accurate
     # see https://github.com/bmild/nerf/issues/24
     directions = \
@@ -27,7 +29,7 @@ def get_ray_directions(H, W, focal):
 
     return directions
 
-
+#射线获取
 def get_rays(directions, c2w):
     """
     Get ray origin and normalized directions in world coordinate for all pixels in one image.
@@ -53,7 +55,7 @@ def get_rays(directions, c2w):
 
     return rays_o, rays_d
 
-
+#在NDC空间获取射线
 def get_ndc_rays(H, W, focal, near, rays_o, rays_d):
     """
     Transform rays from world coordinate to NDC.
@@ -80,6 +82,7 @@ def get_ndc_rays(H, W, focal, near, rays_o, rays_d):
     rays_o = rays_o + t[...,None] * rays_d
 
     # Store some intermediate homogeneous results
+    # 存储一些中间的同质结果
     ox_oz = rays_o[...,0] / rays_o[...,2]
     oy_oz = rays_o[...,1] / rays_o[...,2]
     

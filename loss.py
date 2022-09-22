@@ -7,7 +7,7 @@ import pdb
 
 from utils import hash
 
-
+#计算个分辨率层级的方差损失
 def total_variation_loss(embeddings, min_resolution, max_resolution, level, log2_hashmap_size, n_levels=16):
     # Get resolution
     b = exp((log(max_resolution)-log(min_resolution))/(n_levels-1))
@@ -42,6 +42,7 @@ def total_variation_loss(embeddings, min_resolution, max_resolution, level, log2
 
     return (tv_x + tv_y + tv_z)/cube_size
 
+#计算不透明度损失
 def sigma_sparsity_loss(sigmas):
     # Using Cauchy Sparsity loss on sigma values
     return torch.log(1.0 + 2*sigmas**2).sum(dim=-1)
